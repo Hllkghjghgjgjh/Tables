@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Table Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: moveGrid 20s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes moveGrid {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    
+    h1 {
+      color: #667eea;
+      font-size: 3em;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #718096;
+      font-size: 1.1em;
+    }
+    
+    .form-section {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 25px;
+      border: 2px solid #e2e8f0;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #2d3748;
+      font-size: 0.95em;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: all 0.3s;
+      background: white;
+    }
+    
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+    }
+    
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 25px 0;
+    }
+    
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+    
+    button:active {
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+      color: white;
+    }
+    
+    .btn-warning {
+      background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+      color: white;
+    }
+    
+    .btn-info {
+      background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+      color: white;
+    }
+    
+    .section-title {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #667eea;
+      display: inline-block;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      margin-top: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      background: white;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: white;
+    }
+    
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      text-align: left;
+      position: relative;
+    }
+    
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    th:first-child {
+      border-top-left-radius: 15px;
+    }
+    
+    th:last-child {
+      border-top-right-radius: 15px;
+    }
+    
+    tbody tr:hover {
+      background: #f7fafc;
+    }
+    
+    th input {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.2);
+      font-weight: 600;
+      color: white;
+      border-radius: 5px;
+    }
+    
+    th input:focus {
+      border-color: white;
+      background: rgba(255,255,255,0.3);
+      outline: none;
+    }
+    
+    th input::placeholder {
+      color: rgba(255,255,255,0.7);
+    }
+    
+    td input {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid transparent;
+      border-radius: 5px;
+      transition: all 0.2s;
+    }
+    
+    td input:focus {
+      border-color: #667eea;
+      background: #f7fafc;
+      outline: none;
+    }
+    
+    .row-num {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      font-weight: 700;
+      text-align: center;
+      min-width: 80px;
+      color: #4a5568;
+    }
+    
+    .delete-btn {
+      background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+      transition: all 0.2s;
+    }
+    
+    .delete-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(245, 101, 101, 0.4);
+    }
+    
+    .cell-selected {
+      background: #fef5e7 !important;
+      border: 2px solid #f39c12 !important;
+    }
+    
+    .merge-controls {
+      background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      border: 2px solid #fc8181;
+      display: none;
+    }
+    
+    .merge-controls.active {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .merge-info {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    input[type="file"] {
+      display: none;
+    }
+    
+    .icon {
+      font-size: 1.2em;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 2em;
+      }
+      
+      .btn-group {
+        flex-direction: column;
+      }
+      
+      button {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .merged-cell {
+      background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%) !important;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Advanced Table Generator</h1>
+      <p class="subtitle">Create, Edit, and Export Beautiful Tables</p>
+    </div>
+    
+    <div class="form-section">
+      <div class="form-group">
+        <label>📝 Table Name:</label>
+        <input type="text" id="tableName" value="Data Table" placeholder="Enter table name..." />
+      </div>
+      
+      <div class="form-group">
+        <label>📄 Table Description:</label>
+        <textarea id="tableDescription" placeholder="Add a description for your table (exported in CSV and LaTeX)..."></textarea>
+      </div>
+      
+      <div class="row">
+        <div class="form-group">
+          <label>📏 Rows:</label>
+          <input type="number" id="rows" value="5" min="1" />
+        </div>
+        <div class="form-group">
+          <label>📐 Columns:</label>
+          <input type="number" id="cols" value="4" min="1" />
+        </div>
+      </div>
+    </div>
+    
+    <div class="section-title">🛠️ Table Actions</div>
+    <div class="btn-group">
+      <button class="btn-success" onclick="addRow()">
+        <span class="icon">➕</span> Add Row
+      </button>
+      <button class="btn-success" onclick="addColumn()">
+        <span class="icon">➕</span> Add Column
+      </button>
+      <button class="btn-info" onclick="toggleMergeMode()">
+        <span class="icon">🔗</span> Merge Cells
+      </button>
+      <button class="btn-secondary" onclick="clearTable()">
+        <span class="icon">🗑️</span> Clear All
+      </button>
+    </div>
+    
+    <div class="merge-controls" id="mergeControls">
+      <div class="merge-info" id="mergeInfo">
+        Select cells to merge by clicking on them while holding Ctrl/Cmd
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="mergeCells()">
+          <span class="icon">✓</span> Merge Selected
+        </button>
+        <button class="btn-danger" onclick="cancelMerge()">
+          <span class="icon">✕</span> Cancel
+        </button>
+      </div>
+    </div>
+    
+    <div class="section-title">💾 Import & Export</div>
+    <div class="btn-group">
+      <button class="btn-primary" onclick="exportCSV()">
+        <span class="icon">📥</span> Export CSV
+      </button>
+      <button class="btn-primary" onclick="exportLaTeX()">
+        <span class="icon">📥</span> Export LaTeX
+      </button>
+      <button class="btn-warning" onclick="document.getElementById('csvFile').click()">
+        <span class="icon">📤</span> Import CSV
+      </button>
+      <button class="btn-warning" onclick="document.getElementById('latexFile').click()">
+        <span class="icon">📤</span> Import LaTeX
+      </button>
+    </div>
+    
+    <input type="file" id="csvFile" accept=".csv" onchange="importCSV(event)" />
+    <input type="file" id="latexFile" accept=".tex" onchange="importLaTeX(event)" />
+    
+    <div class="table-container">
+      <table id="dataTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let headers = ['Column 1', 'Column 2', 'Column 3', 'Column 4'];
+    let data = [
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', '']
+    ];
+    let mergedCells = {}; // Store merged cell information
+    let selectedCells = [];
+    let mergeMode = false;
+
+    function renderTable() {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      
+      // Render headers
+      let headerHTML = '<tr><th>#</th>';
+      headers.forEach((h, i) => {
+        headerHTML += `<th>
+          <input type="text" value="${h}" onchange="updateHeader(${i}, this.value)" placeholder="Column ${i+1}" />
+          <button class="delete-btn" onclick="deleteColumn(${i})">✕</button>
+        </th>`;
+      });
+      headerHTML += '</tr>';
+      thead.innerHTML = headerHTML;
+      
+      // Render body with merged cells
+      let bodyHTML = '';
+      let skipCells = new Set();
+      
+      data.forEach((row, rIdx) => {
+        bodyHTML += `<tr>
+          <td class="row-num">
+            ${rIdx + 1}
+            <button class="delete-btn" onclick="deleteRow(${rIdx})">✕</button>
+          </td>`;
+        
+        row.forEach((cell, cIdx) => {
+          const cellKey = `${rIdx}-${cIdx}`;
+          
+          if (skipCells.has(cellKey)) {
+            return; // Skip this cell as it's part of a merge
+          }
+          
+          const merge = mergedCells[cellKey];
+          let rowspan = 1;
+          let colspan = 1;
+          let isMerged = false;
+          
+          if (merge) {
+            rowspan = merge.rowspan || 1;
+            colspan = merge.colspan || 1;
+            isMerged = true;
+            
+            // Mark cells to skip
+            for (let r = 0; r < rowspan; r++) {
+              for (let c = 0; c < colspan; c++) {
+                if (r !== 0 || c !== 0) {
+                  skipCells.add(`${rIdx + r}-${cIdx + c}`);
+                }
+              }
+            }
+          }
+          
+          const classes = isMerged ? 'merged-cell' : '';
+          bodyHTML += `<td rowspan="${rowspan}" colspan="${colspan}" class="${classes}" onclick="selectCell(${rIdx}, ${cIdx}, event)">
+            <input type="text" value="${cell}" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" />
+          </td>`;
+        });
+        bodyHTML += '</tr>';
+      });
+      
+      tbody.innerHTML = bodyHTML;
+    }
+
+    function updateHeader(index, value) {
+      headers[index] = value;
+    }
+
+    function updateCell(row, col, value) {
+      data[row][col] = value;
+    }
+
+    function addRow() {
+      data.push(Array(headers.length).fill(''));
+      document.getElementById('rows').value = data.length;
+      renderTable();
+    }
+
+    function addColumn() {
+      headers.push(`Column ${headers.length + 1}`);
+      data.forEach(row => row.push(''));
+      document.getElementById('cols').value = headers.length;
+      renderTable();
+    }
+
+    function deleteRow(index) {
+      if (data.length > 1) {
+        data.splice(index, 1);
+        // Clean up merged cells
+        const newMerged = {};
+        Object.keys(mergedCells).forEach(key => {
+          const [r, c] = key.split('-').map(Number);
+          if (r < index) {
+            newMerged[key] = mergedCells[key];
+          } else if (r > index) {
+            newMerged[`${r-1}-${c}`] = mergedCells[key];
+          }
+        });
+        mergedCells = newMerged;
+        document.getElementById('rows').value = data.length;
+        renderTable();
+      } else {
+        alert('⚠️ Table must have at least one row!');
+      }
+    }
+
+    function deleteColumn(index) {
+      if (headers.length > 1) {
+        headers.splice(index, 1);
+        data.forEach(row => row.splice(index, 1));
+        // Clean up merged cells
+        const newMerged = {};
+        Object.keys(mergedCells).forEach(key => {
+          const [r, c] = key.split('-').map(Number);
+          if (c < index) {
+            newMerged[key] = mergedCells[key];
+          } else if (c > index) {
+            newMerged[`${r}-${c-1}`] = mergedCells[key];
+          }
+        });
+        mergedCells = newMerged;
+        document.getElementById('cols').value = headers.length;
+        renderTable();
+      } else {
+        alert('⚠️ Table must have at least one column!');
+      }
+    }
+
+    function clearTable() {
+      if (confirm('⚠️ Are you sure you want to clear all data?')) {
+        data = data.map(row => row.map(() => ''));
+        mergedCells = {};
+        renderTable();
+      }
+    }
+
+    function toggleMergeMode() {
+      mergeMode = !mergeMode;
+      const controls = document.getElementById('mergeControls');
+      if (mergeMode) {
+        controls.classList.add('active');
+        selectedCells = [];
+      } else {
+        controls.classList.remove('active');
+        selectedCells = [];
+        renderTable();
+      }
+    }
+
+    function selectCell(row, col, event) {
+      if (!mergeMode) return;
+      
+      event.stopPropagation();
+      const cellKey = `${row}-${col}`;
+      const cellIndex = selectedCells.findIndex(c => c.key === cellKey);
+      
+      if (cellIndex > -1) {
+        selectedCells.splice(cellIndex, 1);
+      } else {
+        selectedCells.push({ row, col, key: cellKey });
+      }
+      
+      // Visual feedback
+      document.querySelectorAll('td').forEach(td => td.classList.remove('cell-selected'));
+      selectedCells.forEach(cell => {
+        const td = document.querySelector(`tbody tr:nth-child(${cell.row + 1}) td:nth-child(${cell.col + 2})`);
+        if (td) td.classList.add('cell-selected');
+      });
+      
+      document.getElementById('mergeInfo').textContent = 
+        selectedCells.length > 0 
+          ? `Selected ${selectedCells.length} cell(s). Click 'Merge Selected' to merge them.`
+          : 'Select cells to merge by clicking on them';
+    }
+
+    function mergeCells() {
+      if (selectedCells.length < 2) {
+        alert('⚠️ Please select at least 2 cells to merge!');
+        return;
+      }
+      
+      // Find the bounds of selected cells
+      const rows = selectedCells.map(c => c.row);
+      const cols = selectedCells.map(c => c.col);
+      const minRow = Math.min(...rows);
+      const maxRow = Math.max(...rows);
+      const minCol = Math.min(...cols);
+      const maxCol = Math.max(...cols);
+      
+      // Check if selection forms a rectangle
+      const expectedCells = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+      if (selectedCells.length !== expectedCells) {
+        alert('⚠️ Selected cells must form a rectangular area!');
+        return;
+      }
+      
+      // Store merge info
+      const mergeKey = `${minRow}-${minCol}`;
+      mergedCells[mergeKey] = {
+        rowspan: maxRow - minRow + 1,
+        colspan: maxCol - minCol + 1
+      };
+      
+      // Combine cell values
+      let combinedValue = '';
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          if (data[r][c]) {
+            combinedValue += (combinedValue ? ' ' : '') + data[r][c];
+          }
+        }
+      }
+      data[minRow][minCol] = combinedValue;
+      
+      toggleMergeMode();
+      renderTable();
+    }
+
+    function cancelMerge() {
+      toggleMergeMode();
+    }
+
+    function exportCSV() {
+      const tableName = document.getElementById('tableName').value;
+      const description = document.getElementById('tableDescription').value;
+      
+      let csv = '';
+      if (description) {
+        csv += `# ${tableName}\n# ${description}\n#\n`;
+      }
+      csv += headers.join(',') + '\n';
+      data.forEach(row => {
+        csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+      });
+      
+      downloadFile(csv, tableName.replace(/\s+/g, '_') + '.csv', 'text/csv');
+    }
+
+    function exportLaTeX() {
+      const tableName = document.getElementById('tableName').value;
+      const description = document.getElementById('tableDescription').value;
+      
+      let latex = '\\begin{table}[h]\n\\centering\n';
+      latex += `\\caption{${tableName}`;
+      if (description) {
+        latex += `. ${description}`;
+      }
+      latex += '}\n';
+      latex += `\\begin{tabular}{|${'c|'.repeat(headers.length)}}\n\\hline\n`;
+      latex += headers.join(' & ') + ' \\\\\n\\hline\n';
+      
+      // Handle merged cells in LaTeX
+      data.forEach((row, rIdx) => {
+        let rowContent = [];
+        row.forEach((cell, cIdx) => {
+          const cellKey = `${rIdx}-${cIdx}`;
+          const merge = mergedCells[cellKey];
+          let cellText = cell.replace(/[&%$#_{}~^\\]/g, '\\$&');
+          
+          if (merge) {
+            if (merge.colspan > 1) {
+              cellText = `\\multicolumn{${merge.colspan}}{|c|}{${cellText}}`;
+            }
+            if (merge.rowspan > 1) {
+              cellText = `\\multirow{${merge.rowspan}}{*}{${cellText}}`;
+            }
+          }
+          rowContent.push(cellText);
+        });
+        latex += rowContent.join(' & ') + ' \\\\\n\\hline\n';
+      });
+      
+      latex += '\\end{tabular}\n';
+      if (description) {
+        latex += `\\label{tab:${tableName.toLowerCase().replace(/\s+/g, '_')}}\n`;
+      }
+      latex += '\\end{table}';
+      
+      downloadFile(latex, tableName.replace(/\s+/g, '_') + '.tex', 'text/plain');
+    }
+
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length === 0) return;
+        
+        let startIdx = 0;
+        let desc = '';
+        
+        while (startIdx < lines.length && lines[startIdx].trim().startsWith('#')) {
+          const comment = lines[startIdx].trim().substring(1).trim();
+          if (comment && !comment.match(/^[-=]+$/)) {
+            desc += (desc ? ' ' : '') + comment;
+          }
+          startIdx++;
+        }
+        
+        if (desc) {
+          document.getElementById('tableDescription').value = desc;
+        }
+        
+        headers = lines[startIdx].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        data = lines.slice(startIdx + 1).map(line => 
+          line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''))
+        );
+        
+        mergedCells = {};
+        document.getElementById('rows').value = data.length;
+        document.getElementById('cols').value = headers.length;
+        renderTable();
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function importLaTeX(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        
+        const captionMatch = text.match(/\\caption\{([^}]+)\}/);
+        if (captionMatch) {
+          const caption = captionMatch[1];
+          const parts = caption.split('.');
+          if (parts.length > 1) {
+            document.getElementById('tableName').value = parts[0].trim();
+            document.getElementById('tableDescription').value = parts.slice(1).join('.').trim();
+          } else {
+            document.getElementById('tableName').value = caption.trim();
+          }
+        }
+        
+        const tabularMatch = text.match(/\\begin\{tabular\}.*?\n(.*?)\\end\{tabular\}/s);
+        if (!tabularMatch) {
+          alert('⚠️ No tabular environment found in LaTeX file');
+          return;
+        }
+        
+        const tableContent = tabularMatch[1];
+        const rows = tableContent.split('\\\\').map(row => 
+          row.replace(/\\hline/g, '').trim()
+        ).filter(row => row);
+        
+        if (rows.length === 0) return;
+        
+        headers = rows[0].split('&').map(h => h.trim());
+        data = rows.slice(1).map(row => 
+          row.split('&').map(cell => cell.trim().replace(/\\([&%$#_{}~^\\])/g, '$1'))
+        );
+        
+        mergedCells = {};
+        document.getElementById('rows').value = data.length;
+        document.getElementById('cols').value = headers.length;
+        renderTable();
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function downloadFile(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('rows').addEventListener('change', function() {
+      const newRows = Math.max(1, parseInt(this.value) || 1);
+      while (data.length < newRows) {
+        data.push(Array(headers.length).fill(''));
+      }
+      while (data.length > newRows) {
+        data.pop();
+      }
+      this.value = data.length;
+      renderTable();
+    });
+
+    document.getElementById('cols').addEventListener('change', function() {
+      const newCols = Math.max(1, parseInt(this.value) || 1);
+      while (headers.length < newCols) {
+        headers.push(`Column ${headers.length + 1}`);
+        data.forEach(row => row.push(''));
+      }
+      while (headers.length > newCols) {
+        headers.pop();
+        data.forEach(row => row.pop());
+      }
+      this.value = headers.length;
+      renderTable();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
