@@ -225,6 +225,8 @@
       position: sticky;
       top: 0;
       z-index: 10;
+      cursor: pointer;
+      user-select: none;
     }
     
     th:first-child {
@@ -237,6 +239,11 @@
     
     tbody tr:hover {
       background: #f7fafc;
+    }
+    
+    td {
+      cursor: pointer;
+      user-select: none;
     }
     
     th input {
@@ -279,6 +286,8 @@
       text-align: center;
       min-width: 80px;
       color: #4a5568;
+      cursor: pointer;
+      user-select: none;
     }
     
     .delete-btn {
@@ -479,33 +488,89 @@
       const thead = document.getElementById('tableHead');
       const tbody = document.getElementById('tableBody');
       
-      // Render headers
-      let headerHTML = '<tr><th>#</th>';
-      headers.forEach((h, i) => {
-        headerHTML += `<th>
-          <input type="text" value="${h}" onchange="updateHeader(${i}, this.value)" placeholder="Column ${i+1}" />
-          <button class="delete-btn" onclick="deleteColumn(${i})">✕</button>
+      // Render headers with merge support
+      let headerHTML = '<tr>';
+      let skipHeaders = new Set();
+      
+      // Check for merged header at position 0,0 (the # cell)
+      const cornerKey = 'h--1--1';
+      const cornerMerge = mergedCells[cornerKey];
+      
+      if (cornerMerge) {
+        headerHTML += `<th rowspan="${cornerMerge.rowspan || 1}" colspan="${cornerMerge.colspan || 1}" class="merged-cell" onclick="selectCell(-1, -1, event)">
+          <input type="text" value="#" disabled style="text-align:center;" />
         </th>`;
+        
+        for (let c = 0; c < (cornerMerge.colspan || 1) - 1; c++) {
+          skipHeaders.add(-1 + c);
+        }
+      } else {
+        headerHTML += `<th onclick="selectCell(-1, -1, event)">#</th>`;
+      }
+      
+      headers.forEach((h, i) => {
+        if (skipHeaders.has(i)) return;
+        
+        const headerKey = `h--1-${i}`;
+        const merge = mergedCells[headerKey];
+        
+        if (merge) {
+          headerHTML += `<th rowspan="${merge.rowspan || 1}" colspan="${merge.colspan || 1}" class="merged-cell" onclick="selectCell(-1, ${i}, event)">
+            <input type="text" value="${h}" onchange="updateHeader(${i}, this.value)" placeholder="Column ${i+1}" />
+            <button class="delete-btn" onclick="deleteColumn(${i})">✕</button>
+          </th>`;
+          
+          for (let c = 0; c < (merge.colspan || 1) - 1; c++) {
+            skipHeaders.add(i + c + 1);
+          }
+        } else {
+          headerHTML += `<th onclick="selectCell(-1, ${i}, event)">
+            <input type="text" value="${h}" onchange="updateHeader(${i}, this.value)" placeholder="Column ${i+1}" />
+            <button class="delete-btn" onclick="deleteColumn(${i})">✕</button>
+          </th>`;
+        }
       });
       headerHTML += '</tr>';
       thead.innerHTML = headerHTML;
       
-      // Render body with merged cells
+      // Render body with merged cells including row numbers
       let bodyHTML = '';
       let skipCells = new Set();
       
       data.forEach((row, rIdx) => {
-        bodyHTML += `<tr>
-          <td class="row-num">
-            ${rIdx + 1}
-            <button class="delete-btn" onclick="deleteRow(${rIdx})">✕</button>
-          </td>`;
+        bodyHTML += `<tr>`;
+        
+        // Row number cell with merge support
+        const rowKey = `${rIdx}--1`;
+        if (!skipCells.has(rowKey)) {
+          const rowMerge = mergedCells[rowKey];
+          
+          if (rowMerge) {
+            bodyHTML += `<td rowspan="${rowMerge.rowspan || 1}" colspan="${rowMerge.colspan || 1}" class="row-num merged-cell" onclick="selectCell(${rIdx}, -1, event)">
+              <span>${rIdx + 1}</span>
+              <button class="delete-btn" onclick="deleteRow(${rIdx})">✕</button>
+            </td>`;
+            
+            for (let r = 0; r < (rowMerge.rowspan || 1); r++) {
+              for (let c = 0; c < (rowMerge.colspan || 1); c++) {
+                if (r !== 0 || c !== 0) {
+                  skipCells.add(`${rIdx + r}-${-1 + c}`);
+                }
+              }
+            }
+          } else {
+            bodyHTML += `<td class="row-num" onclick="selectCell(${rIdx}, -1, event)">
+              <span>${rIdx + 1}</span>
+              <button class="delete-btn" onclick="deleteRow(${rIdx})">✕</button>
+            </td>`;
+          }
+        }
         
         row.forEach((cell, cIdx) => {
           const cellKey = `${rIdx}-${cIdx}`;
           
           if (skipCells.has(cellKey)) {
-            return; // Skip this cell as it's part of a merge
+            return;
           }
           
           const merge = mergedCells[cellKey];
@@ -518,7 +583,6 @@
             colspan = merge.colspan || 1;
             isMerged = true;
             
-            // Mark cells to skip
             for (let r = 0; r < rowspan; r++) {
               for (let c = 0; c < colspan; c++) {
                 if (r !== 0 || c !== 0) {
@@ -628,7 +692,9 @@
       if (!mergeMode) return;
       
       event.stopPropagation();
-      const cellKey = `${row}-${col}`;
+      event.preventDefault();
+      
+      const cellKey = `${row < 0 ? 'h-' : ''}${row}-${col}`;
       const cellIndex = selectedCells.findIndex(c => c.key === cellKey);
       
       if (cellIndex > -1) {
@@ -638,16 +704,26 @@
       }
       
       // Visual feedback
-      document.querySelectorAll('td').forEach(td => td.classList.remove('cell-selected'));
+      document.querySelectorAll('th, td').forEach(cell => cell.classList.remove('cell-selected'));
       selectedCells.forEach(cell => {
-        const td = document.querySelector(`tbody tr:nth-child(${cell.row + 1}) td:nth-child(${cell.col + 2})`);
-        if (td) td.classList.add('cell-selected');
+        let selector;
+        if (cell.row === -1 && cell.col === -1) {
+          selector = `thead tr th:first-child`;
+        } else if (cell.row === -1) {
+          selector = `thead tr th:nth-child(${cell.col + 2})`;
+        } else if (cell.col === -1) {
+          selector = `tbody tr:nth-child(${cell.row + 1}) td:first-child`;
+        } else {
+          selector = `tbody tr:nth-child(${cell.row + 1}) td:nth-child(${cell.col + 2})`;
+        }
+        const cellEl = document.querySelector(selector);
+        if (cellEl) cellEl.classList.add('cell-selected');
       });
       
       document.getElementById('mergeInfo').textContent = 
         selectedCells.length > 0 
           ? `Selected ${selectedCells.length} cell(s). Click 'Merge Selected' to merge them.`
-          : 'Select cells to merge by clicking on them';
+          : 'Select cells to merge by clicking on them (including headers and row numbers)';
     }
 
     function mergeCells() {
@@ -656,23 +732,60 @@
         return;
       }
       
-      // Find the bounds of selected cells
-      const rows = selectedCells.map(c => c.row);
-      const cols = selectedCells.map(c => c.col);
+      // Expand selection to account for already merged cells
+      let expandedCells = new Set();
+      selectedCells.forEach(cell => {
+        const cellKey = cell.row === -1 ? `h-${cell.row}-${cell.col}` : `${cell.row}-${cell.col}`;
+        const merge = mergedCells[cellKey];
+        
+        if (merge) {
+          // This cell is already merged, add all its spanned cells
+          for (let r = 0; r < merge.rowspan; r++) {
+            for (let c = 0; c < merge.colspan; c++) {
+              expandedCells.add(`${cell.row + r},${cell.col + c}`);
+            }
+          }
+        } else {
+          expandedCells.add(`${cell.row},${cell.col}`);
+        }
+      });
+      
+      // Parse expanded cells back to coordinates
+      const expandedCoords = Array.from(expandedCells).map(key => {
+        const [r, c] = key.split(',').map(Number);
+        return { row: r, col: c };
+      });
+      
+      const rows = expandedCoords.map(c => c.row);
+      const cols = expandedCoords.map(c => c.col);
       const minRow = Math.min(...rows);
       const maxRow = Math.max(...rows);
       const minCol = Math.min(...cols);
       const maxCol = Math.max(...cols);
       
-      // Check if selection forms a rectangle
+      // Check if expanded selection forms a rectangle
       const expectedCells = (maxRow - minRow + 1) * (maxCol - minCol + 1);
-      if (selectedCells.length !== expectedCells) {
-        alert('⚠️ Selected cells must form a rectangular area!');
+      if (expandedCells.size !== expectedCells) {
+        alert('⚠️ Selected cells (including merged cell spans) must form a rectangular area!');
         return;
       }
       
-      // Store merge info
-      const mergeKey = `${minRow}-${minCol}`;
+      // Remove old merge entries that are now part of the new merge
+      Object.keys(mergedCells).forEach(key => {
+        let [r, c] = key.replace('h-', '').split('-').map(Number);
+        if (r >= minRow && r <= maxRow && c >= minCol && c <= maxCol) {
+          delete mergedCells[key];
+        }
+      });
+      
+      // Store merge info with special key format for headers
+      let mergeKey;
+      if (minRow === -1) {
+        mergeKey = `h-${minRow}-${minCol}`;
+      } else {
+        mergeKey = `${minRow}-${minCol}`;
+      }
+      
       mergedCells[mergeKey] = {
         rowspan: maxRow - minRow + 1,
         colspan: maxCol - minCol + 1
@@ -680,14 +793,34 @@
       
       // Combine cell values
       let combinedValue = '';
-      for (let r = minRow; r <= maxRow; r++) {
+      
+      if (minRow === -1 && minCol === -1) {
+        // Merging includes corner cell
+        combinedValue = '#';
+      } else if (minRow === -1) {
+        // Merging headers
         for (let c = minCol; c <= maxCol; c++) {
-          if (data[r][c]) {
-            combinedValue += (combinedValue ? ' ' : '') + data[r][c];
+          if (c >= 0 && c < headers.length && headers[c]) {
+            combinedValue += (combinedValue ? ' ' : '') + headers[c];
           }
         }
+        if (combinedValue) headers[minCol] = combinedValue;
+      } else if (minCol === -1) {
+        // Merging row numbers - just keep first
+        combinedValue = (minRow + 1).toString();
+      } else {
+        // Merging data cells
+        for (let r = minRow; r <= maxRow; r++) {
+          for (let c = minCol; c <= maxCol; c++) {
+            if (r >= 0 && c >= 0 && r < data.length && c < data[r].length && data[r][c]) {
+              combinedValue += (combinedValue ? ' ' : '') + data[r][c];
+            }
+          }
+        }
+        if (minRow >= 0 && minCol >= 0) {
+          data[minRow][minCol] = combinedValue;
+        }
       }
-      data[minRow][minCol] = combinedValue;
       
       toggleMergeMode();
       renderTable();
